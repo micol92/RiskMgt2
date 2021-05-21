@@ -1,0 +1,106 @@
+## Generated mta.yaml based on template version 0.4.0
+## appName = RiskMgt2
+## language=nodejs; multitenant=false
+## approuter=
+_schema-version: '3.3'
+ID: RiskMgt2
+version: 1.0.0
+description: "A simple CAP project."
+parameters:
+  enable-parallel-deployments: true
+   
+build-parameters:
+  before-all:
+   - builder: custom
+     commands:
+      - npm install --production
+      - npx -p @sap/cds-dk cds build --production
+
+modules:
+ # --------------------- SERVER MODULE ------------------------
+ - name: RiskMgt2-srv
+ # ------------------------------------------------------------
+   type: nodejs
+   path: gen/srv
+   requires:
+    # Resources extracted from CAP configuration
+    - name: RiskMgt2-db
+    - name: RiskMgt2-uaa    
+   provides:
+    - name: srv-api      # required by consumers of CAP services (e.g. approuter)
+      properties:
+        srv-url: ${default-url}
+
+
+ # -------------------- SIDECAR MODULE ------------------------
+ - name: RiskMgt2-db-deployer
+ # ------------------------------------------------------------
+   type: hdb
+   path: gen/db  
+   parameters:
+     buildpack: nodejs_buildpack
+   requires:
+    # 'hana' and 'xsuaa' resources extracted from CAP configuration
+    - name: RiskMgt2-db
+    - name: RiskMgt2-uaa
+
+# --------------------  APPROUTER -----------------------------
+ - name: RiskMgt2-approuter
+# ------------------------------------------------------------
+   type: nodejs
+   path: approuter
+   requires:
+     - name: RiskMgt2-uaa
+     - name: srv-api
+       group: destinations
+       properties:
+        forwardAuthToken: true
+        strictSSL: true
+        name: srv-binding
+        url: '~{srv-url}'
+   build-parameters:
+     requires:         
+     - name: RiskMgt2-app
+       artifacts:
+        - ./*
+       target-path: resources             
+  # --------------------  UI -----------------------------------
+ - name: RiskMgt2-app
+  # ------------------------------------------------------------
+   type: html5
+   path: app
+   build-parameters: 
+    supported-platforms: []
+
+resources:
+ # services extracted from CAP configuration
+ # 'service-plan' can be configured via 'cds.requires.<name>.vcap.plan'
+# ------------------------------------------------------------
+ - name: RiskMgt2-db
+# ------------------------------------------------------------
+   type: com.sap.xs.hdi-container
+   parameters:
+     service: hana  # or 'hanatrial' on trial landscapes
+     service-plan: hdi-shared
+   properties:
+     hdi-service-name: ${service-name}
+
+# ------------------------------------------------------------
+ - name: RiskMgt2-uaa
+# ------------------------------------------------------------
+   type: org.cloudfoundry.managed-service
+   parameters:
+     service: xsuaa
+     service-plan: application  
+     path: ./xs-security.json
+     config:
+       xsappname: 'RiskMgt2-${space}'
+       role-collections:
+         - name: 'RiskManager-${space}'
+           description: Manage Risks
+           role-template-references:
+             - $XSAPPNAME.RiskManager
+         - name: 'RiskViewer-${space}'
+           description: View Risks
+           role-template-references:
+             - $XSAPPNAME.RiskViewer
