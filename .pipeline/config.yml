@@ -27,20 +27,6 @@ stages:
   'Confirm':
     manualConfirmation: false
 
-# Project configuration
-general:
-  projectName: 'RiskMgt2'
-  productiveBranch: 'main'
-
-# Stage configuration
-stages:
-  productionDeployment:
-    cfTargets:
-    - org: 'SCP_KR_lottechembtppoc'
-      space: 'core'
-      appName: 'RiskMgt2'
-      apiEndpoint: 'https://api.cf.ap11.hana.ondemand.com'
-      credentialsId: 'cf-credential-jwid'
 #  Integration:
 #    credentials:
 #      - alias: 'mySystemAlias'
